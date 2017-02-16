@@ -1,1 +1,1 @@
-# codedeploy_sourcecode
+# codedeploy related resources
