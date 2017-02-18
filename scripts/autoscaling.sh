@@ -4,7 +4,7 @@ iam_instance_profile=CodeDeployEC2Role
 sg=sg-650f2000
 key_name=staging
 instance_type=t2.medium
-#instance_type=t2.micro
+instance_type=t2.micro
 
 # bash v4 has hash map, but we might be running v3, so :(
 # ami image id
@@ -57,7 +57,7 @@ if [[ ${action} == 'c' ]]; then
         --iam-instance-profile ${iam_instance_profile} \
         --instance-type ${instance_type} \
         --instance-monitoring Enabled=false \
-        --user-data file://instance-setup.sh
+        --user-data file://instance-setup.sh 
 
 
     aws autoscaling create-auto-scaling-group --auto-scaling-group-name ${group_name} \
