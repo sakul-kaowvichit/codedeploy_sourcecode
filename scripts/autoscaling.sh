@@ -1,5 +1,6 @@
 #!/bin/bash
 
+keyword='TYPE=XXXXX'
 iam_instance_profile=CodeDeployEC2Role
 sg=sg-650f2000
 key_name=staging
@@ -19,6 +20,12 @@ deployment_config_name=CodeDeployDefault.AllAtOnce      # CodeDeployDefault.OneA
 
 echo '' 
 read -p 'action -- create (c), delete (d): ' action
+while [[ ${action} != 'c' && ${action} != 'd' ]]; do
+    echo "ERROR: the only valid input would be 'c' or 'd', pls try again.."
+    echo ''
+    read -p 'action -- create (c), delete (d): ' action
+done
+
 read -p 'environment, ie prod, stage_1, stage_a, qa_x: ' environment
 read -p 'group name: ' g_name
 
@@ -41,6 +48,17 @@ else
         read -p "can't find a default image, pls enter ami image id: " ami_id
         read -p "tag role: " role
     fi
+fi
+
+if ! grep ${keyword} instance-setup.template 1> /dev/null; then
+    echo 'ERROR: keyword,' ${keyword} ', not found on instance-setup.template'
+    exit 1
+fi
+
+err=$(sed "s/TYPE=XXXXX/TYPE=${role}/" instance-setup.template 2>&1 > instance-setup.sh)
+if [ $? -ne 0 ]; then
+    echo 'ERROR: during create instance-setup.sh' ${err}
+    exit 1
 fi
 
 

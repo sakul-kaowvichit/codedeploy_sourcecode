@@ -1,11 +1,11 @@
 #!/bin/bash
 
-TYPE=brain
+TYPE=XXXXX
 
 # sleep to let the update finish.  
 # need to chk why update is running. this image should be a snapshot of image already built and update by opsworks. 
 # there shouldn't be any update at this point, otherwise we can't control the packages versions
-sleep 60
+sleep 90
 
 region=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep region | awk -F\" '{print $4}')
 
