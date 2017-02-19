@@ -60,7 +60,7 @@ if [ $? -ne 0 ]; then
     echo 'ERROR: during create instance-setup.sh' ${err}
     exit 1
 fi
-
+exit
 
 if [[ ${action} == 'c' ]]; then
 

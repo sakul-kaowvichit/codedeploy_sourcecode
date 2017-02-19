@@ -46,6 +46,7 @@ cd /root
 aws s3 cp s3://aws-codedeploy-${region}/latest/install . --region ${region}
 chmod 700 /root/install
 /root/install auto
+service codedeploy-agent restart
 service codedeploy-agent status
 rm -f /root/install
 
