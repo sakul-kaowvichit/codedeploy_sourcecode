@@ -1,10 +1,12 @@
 aws deploy push \
-  --application-name web \
+  --application-name patientpop \
   --description "This is a 1st revision" \
-  --s3-location s3://pp-brain/web.zip \
+  --s3-location s3://pp-brain/patientpop.zip \
   --no-ignore-hidden-files \
   --source /Users/SakulKaowvichit/_patientpop/_git_pp_code/patientpop
 
 
-aws deploy create-deployment --application-name web --s3-location bucket=pp-brain,key=web.zip,bundleType=zip,eTag=1a98e05c443bfc4418bb3a3afe14342a-23 --deployment-group-name web --deployment-config-name CodeDeployDefault.AllAtOnce --description "1st revision"
+aws deploy create-deployment --application-name patientpop --s3-location bucket=pp-brain,key=patientpop.zip,bundleType=zip,eTag=1a98e05c443bfc4418bb3a3afe14342a-23 --deployment-group-name stage_brain --deployment-config-name CodeDeployDefault.AllAtOnce --description "1st revision"
+
+aws deploy create-deployment --application-name patientpop --s3-location bucket=pp-brain,key=patientpop.zip,bundleType=zip,eTag=1a98e05c443bfc4418bb3a3afe14342a-23 --deployment-group-name stage_web --deployment-config-name CodeDeployDefault.AllAtOnce --description "1st revision"
 
