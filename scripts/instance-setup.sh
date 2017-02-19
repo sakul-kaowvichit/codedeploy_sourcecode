@@ -1,12 +1,6 @@
 #!/bin/bash
 
 TYPE=brain
-
-# sleep to let the update finish.  
-# need to chk why update is running. this image should be a snapshot of image already built and update by opsworks. 
-# there shouldn't be any update at this point, otherwise we can't control the packages versions
-sleep 60
-
 region=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep region | awk -F\" '{print $4}')
 
 # set hostname
@@ -24,18 +18,24 @@ if [[ ${current_hostname} != ${target_hostname} ]]; then
 fi        
 echo 'INFO: current hostname is' ${current_hostname}
 
+# sleep to let the update finish.  
+# need to chk why update is running. this image should be a snapshot of image already built and update by opsworks. 
+# there shouldn't be any update at this point, otherwise we can't control the packages versions
+sleep 30
+
 # install aws-cli  
 if [ -f /etc/redhat-release ]; then
-    yum install -y ruby
-    yum install -y aws-cli
+    yum install -y ruby aws-cli
     # when doing rhel, need to test code below.
     # for rhel 6.x
     #sed -ir 's/HOSTNAME=.*$/HOSTNAME=${target_hostname}/' /etc/sysconfig/network
     #service network restart  <-- this will bounce network int, so all conn will be dropped.  we don't need to do this on ec2 lifecycle.
     # for rhel 7, use hostnamectl set-hostname
 elif [ -f /etc/debian_version ]; then
-    apt-get -y install ruby2.3
-    apt-get -y install awscli
+    while fuser /var/lib/dpkg/lock; do
+      sleep 5
+    done
+    apt-get -y install ruby2.3 awscli
 else
     echo "ERROR: only support rhel and debian"
     exit 1

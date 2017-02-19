@@ -5,7 +5,7 @@ iam_instance_profile=CodeDeployEC2Role
 sg=sg-650f2000
 key_name=staging
 instance_type=t2.medium
-instance_type=t2.micro
+#instance_type=t2.micro
 
 # bash v4 has hash map, but we might be running v3, so :(
 # ami image id
@@ -80,7 +80,7 @@ if [[ ${action} == 'c' ]]; then
 
     aws autoscaling create-auto-scaling-group --auto-scaling-group-name ${group_name} \
         --launch-configuration-name  ${group_name} \
-        --availability-zones "us-east-1a" "us-east-1b" "us-east-1d" "us-east-1e" \
+        --availability-zones "us-east-1b" "us-east-1d" "us-east-1e" \
         --health-check-type "ELB" \
         --health-check-grace-period 600 \
         --default-cooldown 300 \
