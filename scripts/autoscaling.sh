@@ -4,6 +4,7 @@ keyword='TYPE=XXXXX'
 iam_instance_profile=CodeDeployEC2Role
 sg=sg-650f2000
 key_name=staging
+key_name=codedeploy
 instance_type=t2.medium
 #instance_type=t2.micro
 app_name=patientpop
