@@ -5,15 +5,28 @@ iam_instance_profile=CodeDeployEC2Role
 sg=sg-650f2000
 key_name=staging
 key_name=codedeploy
-instance_type=t2.medium
-#instance_type=t2.micro
+#instance_type=t2.medium
+instance_type=t2.micro
 app_name=patientpop
+healthchk_type="ELB" 
+healthchk_grace_period=300
+cooldown=${healthchk_grace_period}
+max_size=1
+min_size=1 
+desired=1
+ip_type="--no-associate-public-ip-address"
+ip_type=''
+elb=''
+no_user_data=1
 
 # bash v4 has hash map, but we might be running v3, so :(
 # ami image id
 base_image_web=ami-75cd0063
 base_image_brain=ami-26c90430
 base_image_admin=ami-f5cc01e3
+base_image_l4proxy=ami-419c4757
+base_image_jumpbox=ami-f40fd3e2
+base_image_ami=ami-0b33d91d
 
 # code deploy
 code_deploy_service_role_arn=arn:aws:iam::347225174248:role/CodeDeployServiceRole
@@ -45,6 +58,31 @@ elif [[ ${g_name} =~ brain ]]; then
 elif [[ ${g_name} =~ admin ]]; then
     ami_id=${base_image_admin}
     role=admin
+elif [[ ${g_name} =~ jumpbox ]]; then
+    ami_id=${base_image_jumpbox}
+    role=jumpbox
+    healthchk_type="EC2"
+    iam_instance_profile="ec2-jumpbox-role"
+    app_name=${role}
+    healthchk_grace_period=60
+    cooldown=${healthchk_grace_period}
+    max_size=1
+    min_size=1
+    desired=1
+    sg=sg-4f2f3933
+    key_name=staging
+    instance_type=t2.micro
+    ip_type='--associate-public-ip-address'
+elif [[ ${g_name} =~ proxy && ${g_name} =~ l4 ]]; then
+    ami_id=${base_image_l4proxy}
+    role=l4proxy
+    iam_instance_profile="ec2-layer4-proxy-role"
+    app_name=${role}
+    healthchk_grace_period=60
+    cooldown=${healthchk_grace_period}
+    max_size=1
+    min_size=1 
+    desired=1
 else
     if [[ ${action} == 'c' ]]; then
         read -p "can't find a default image, pls enter ami image id: " ami_id
@@ -52,15 +90,27 @@ else
     fi
 fi
 
-if ! grep ${keyword} instance-setup.template 1> /dev/null; then
-    echo 'ERROR: keyword,' ${keyword} ', not found on instance-setup.template'
-    exit 1
-fi
 
-err=$(sed "s/TYPE=XXXXX/TYPE=${role}/" instance-setup.template 2>&1 > instance-setup.sh)
-if [ $? -ne 0 ]; then
-    echo 'ERROR: during create instance-setup.sh' ${err}
-    exit 1
+
+
+if [[ ${g_name} =~ jumpbox ]]; then
+    echo '' > instance-setup.sh
+elif [[ ${g_name} =~ l4proxy ]]; then
+    echo '' > instance-setup.sh
+#    cp instance-setup-l4proxy.template instance-setup.sh
+    elb='l4proxy-only-use-for-healthchk'
+else 
+    if ! grep ${keyword} instance-setup.template 1> /dev/null; then
+        echo 'ERROR: keyword,' ${keyword} ', not found on instance-setup.template'
+        exit 1
+    fi
+
+    err=$(sed "s/TYPE=XXXXX/TYPE=${role}/" instance-setup.template 2>&1 > instance-setup.sh)
+    if [ $? -ne 0 ]; then
+        echo 'ERROR: during create instance-setup.sh' ${err}
+        exit 1
+    fi
+    no_user_data=0
 fi
 
 if [[ ${action} == 'c' ]]; then
@@ -83,26 +133,35 @@ if [[ ${action} == 'c' ]]; then
     fi
 
     echo "creating launch-configuration ${group_name}"
-
-    aws autoscaling create-launch-configuration \
-        --launch-configuration-name ${group_name} \
-        --image-id ${ami_id} \
-        --security-groups ${sg} \
-        --key-name ${key_name} \
-        --iam-instance-profile ${iam_instance_profile} \
-        --instance-type ${instance_type} \
-        --instance-monitoring Enabled=false \
-        --user-data file://instance-setup.sh 
+    if [[ ${no_user_data} == '1' ]]; then
+        aws autoscaling create-launch-configuration \
+            --launch-configuration-name ${group_name} \
+            --image-id ${ami_id} \
+            --security-groups ${sg} \
+            --key-name ${key_name} \
+            --iam-instance-profile ${iam_instance_profile} \
+            --instance-type ${instance_type} 
+    else 
+        aws autoscaling create-launch-configuration \
+            --launch-configuration-name ${group_name} \
+            --image-id ${ami_id} \
+            --security-groups ${sg} \
+            --key-name ${key_name} \
+            --iam-instance-profile ${iam_instance_profile} \
+            --instance-type ${instance_type} \
+            --instance-monitoring Enabled=false \
+            --user-data file://instance-setup.sh 
+    fi
 
 
     echo "creating auto-scaling-group ${group_name} with tag Name=${group_name}"
     aws autoscaling create-auto-scaling-group --auto-scaling-group-name ${group_name} \
         --launch-configuration-name  ${group_name} \
         --availability-zones "us-east-1b" "us-east-1d" "us-east-1e" \
-        --health-check-type "ELB" \
-        --health-check-grace-period 600 \
-        --default-cooldown 300 \
-        --max-size 1 --min-size 1 --desired-capacity 1 \
+        --health-check-type ${healthchk_type} \
+        --health-check-grace-period ${healthchk_grace_period} \
+        --default-cooldown ${cooldown} \
+        --max-size ${max_size} --min-size ${min_size} --desired-capacity ${desired} \
         --tags "ResourceId=${group_name},ResourceType=auto-scaling-group,Key=Name,Value=${group_name},PropagateAtLaunch=true"
 
     echo "setting tags environment=${environment}"
@@ -114,6 +173,18 @@ if [[ ${action} == 'c' ]]; then
     echo "enabling auto scaling group metrics"
     aws autoscaling enable-metrics-collection --auto-scaling-group-name ${group_name} --granularity "1Minute"
 
+    if [[ ${elb} != '' ]]; then 
+        echo "attach auto scaling group ${group_name} to elb ${elb}"
+        aws autoscaling attach-load-balancers \
+            --auto-scaling-group-name ${group_name} \
+            --load-balancer-names ${elb}
+    fi
+
+    if [[ ${role} == "jumpbox" ]]; then
+        exit 0
+    fi
+
+    # deployment stuff
     echo "checking to see if application ${app_name} is already exist"
     if aws deploy get-application --application-name ${app_name} > /dev/null 2>&1; then
         echo "application ${app_name} already exist, skip creating..."
@@ -139,7 +210,11 @@ elif [[ ${action} == 'd' ]]; then
     aws autoscaling delete-auto-scaling-group --auto-scaling-group-name ${group_name} --force-delete
     aws autoscaling delete-launch-configuration --launch-configuration-name ${group_name}
 
+    if [[ ${role} == "jumpbox" ]]; then
+        exit 0
+    fi
+
     echo "deleting application ${app_name} and deployment-group-name ${group_name}"
     aws deploy delete-deployment-group --application-name ${app_name} --deployment-group-name ${group_name}
-    aws deploy delete-application --application-name ${app_name}
+#    aws deploy delete-application --application-name ${app_name}
 fi

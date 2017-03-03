@@ -1,0 +1,17 @@
+# template files are in /usr/share/doc/heartbeat-3.0.4
+# need ha.cf, haresources and authkeys
+
+logfile /var/log/ha-log
+debugfile /tmp/ha-debug
+logfacility local0
+keepalive 2
+deadtime 30
+initdead 120
+udpport 694
+ucast eth0 ip-172-31-37-77
+ucast eth0 ip-172-31-9-173
+auto_failback off
+node ip-172-31-37-77
+node ip-172-31-9-173
+# make sure pacemaker automatically restarted in case of a failure.
+pacemaker respawn
