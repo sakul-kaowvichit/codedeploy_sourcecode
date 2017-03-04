@@ -24,7 +24,7 @@ no_user_data=1
 base_image_web=ami-75cd0063
 base_image_brain=ami-26c90430
 base_image_admin=ami-f5cc01e3
-base_image_l4proxy=ami-419c4757
+base_image_l4proxy=ami-77d17461
 base_image_jumpbox=ami-f40fd3e2
 base_image_ami=ami-0b33d91d
 
