@@ -1,0 +1,3 @@
+use chef to make server_block.conf
+
+use server_block_apex_proxy.conf ang server_block_elb_proxy.conf as a 'file' resource for chef
