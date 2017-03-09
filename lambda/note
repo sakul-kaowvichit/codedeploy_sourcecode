@@ -1,0 +1,29 @@
+* setup virtualenv
+
+spinup amazon ami
+
+sudo su -
+yum install -y gcc libffi-devel python2.7-devel openssl-devel
+
+vi worker_function.py
+
+pip install virtualenv
+pip install --upgrade pip
+virtualenv brain-env
+source brain-env/bin/activate
+pip install pycrypto
+pip install paramiko
+
+cd
+zip -r worker_function.zip worker_function.py 
+cd /root/brain-env/lib/python2.7/site-packages
+zip -r /root/worker_function.zip *
+cd /root/brain-env/lib64/python2.7/site-packages 
+zip -r /root/worker_function.zip *
+
+scp worker_function.zip to laptop
+aws s3 cp worker_function.zip s3://pp-deployment/lambda/brain/
+
+url to upload to lambda
+https://s3.amazonaws.com/pp-deployment/lambda/brain/worker_function.zip
+
